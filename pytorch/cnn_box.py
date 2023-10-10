@@ -61,13 +61,24 @@ def eval_loss(loader, device, net, criterion):
 
     return loss
 
+#正解データ数計算用
+def calculate_distance(coord1_1, coord2_2):
+  coord1=coord1_1[0]
+  coord2=coord2_2[0]
+    # 2つの座標間のユークリッド距離を計算する関数
+  return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
+
 # 学習用関数
-def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device, history):
+# 学習用関数
+def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device, history, max_error):
 
     # tqdmライブラリのインポート
     from tqdm.notebook import tqdm
 
     base_epochs = len(history)
+    max_error_num=np.array([max_error, max_error])
+    max_tensor=torch.tensor(max_error_num)
+    max_tensor=max_tensor.to(device)
 
     for epoch in range(base_epochs, num_epochs+base_epochs):
         # 1エポックあたりの正解数(精度計算用)
@@ -106,12 +117,23 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
             optimizer.step()
 
             # 予測ラベル導出
-            predicted = torch.max(outputs, 1)[1]
+            #predicted = torch.max(outputs, 1)[1]
+            
+            # 予測座標を取得
+            predicted_coords = outputs.detach().cpu().numpy()
+            true_coords_np = labels.cpu().numpy()
+
+            # ユークリッド距離を計算
+            error = calculate_distance(predicted_coords, true_coords_np)
 
             # 平均前の損失と正解数の計算
             # lossは平均計算が行われているので平均前の損失に戻して加算
             train_loss += loss.item() * train_batch_size
-            n_train_acc += (predicted == labels).sum().item()
+            
+            # 距離がmax_error以下であれば正解とみなす
+            if error <= max_error:
+              n_train_acc += 1  # 正解数をカウント
+
 
         #予測フェーズ
         net.eval()
@@ -133,12 +155,22 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
             loss_test = criterion(outputs_test, labels_test)
 
             # 予測ラベル導出
-            predicted_test = torch.max(outputs_test, 1)[1]
+            #predicted_test = torch.max(outputs_test, 1)[1]
 
+            # 予測座標を取得
+            predicted_coords_val = outputs_test.detach().cpu().numpy()
+            true_coords_np_val = labels.cpu().numpy()
+
+            # ユークリッド距離を計算
+            error_val = calculate_distance(predicted_coords, true_coords_np)
+  
             #  平均前の損失と正解数の計算
             # lossは平均計算が行われているので平均前の損失に戻して加算
             val_loss +=  loss_test.item() * test_batch_size
-            n_val_acc +=  (predicted_test == labels_test).sum().item()
+
+            # 距離がmax_error以下であれば正解とみなす
+            if error <= max_error:
+              n_val_acc += 1  # 正解数をカウント
 
         # 精度計算
         train_acc = n_train_acc / n_train
@@ -152,6 +184,7 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
         item = np.array([epoch+1, avg_train_loss, train_acc, avg_val_loss, val_acc])
         history = np.vstack((history, item))
     return history
+
 
 
 
@@ -246,14 +279,85 @@ def torch_seed(seed=123):
     torch.backends.cudnn.deterministic = True
     torch.use_deterministic_algorithms = True
 
+#結果評価用(自作)
+def calculate_accuracy(loader, model, device, max_error=0.1):
+    model.eval()  # モデルを評価モードに設定
+    正解数 = 0
+    合計数 = 0
+
+    with torch.no_grad():  # 評価中に勾配計算を無効化
+        for images, labels in loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            predicted = outputs.cpu().numpy()  # 結果をCPUに移動し、NumPy配列に変換
+            正解数 += np.sum(np.abs(predicted - labels.cpu().numpy()) >= max_error)  # 誤差がmax_error以内の場合に正解とみなす
+            合計数 += labels.size(0)*2
+
+    精度 = (正解数 / 合計数) * 100
+    return 精度
+
+def calculate_loss(loader, model, criterion, device):
+    model.eval()  # モデルを評価モードに設定
+    合計損失 = 0.0
+    合計サンプル数 = 0
+
+    with torch.no_grad():  # 評価中に勾配計算を無効化
+        for images, labels in loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            損失 = criterion(outputs, labels)
+            合計損失 += 損失.item() * labels.size(0)
+            合計サンプル数 += labels.size(0)
+
+    平均損失 = 合計損失 / 合計サンプル数
+    return 平均損失
+
+#結果表示用
+def calculate_distance_orig(coord1, coord2):
+    # 2つの座標間のユークリッド距離を計算する関数
+    return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
+
+def show_predicted_results(loader, model, device, max_error=20):
+    model.eval()  # モデルを評価モードに設定
+
+    with torch.no_grad():  # 評価中に勾配計算を無効化
+        for images, true_coords in loader:
+            images = images.to(device)
+            true_coords = true_coords.to(device)
+            outputs = model(images)
+
+            for i in range(len(images)):
+                predicted_coords = outputs[i].cpu().numpy()  # 予測座標を取得
+                true_coords_np = true_coords[i].cpu().numpy()  # 正解座標
+
+                # 誤差を計算
+                error = calculate_distance_orig(predicted_coords, true_coords_np)
+
+                if error <= max_error:
+                    prediction_label = "正解"
+                else:
+                    prediction_label = "不正解"
+
+                print(f"正解座標: {true_coords_np}, 予測座標: {predicted_coords}, 予測結果: {prediction_label}, 誤差: {error:.2f}")
+
+                # 画像を表示
+                plt.figure(figsize=(5, 5))
+                plt.imshow(np.transpose(images[i].cpu().numpy(), (1, 2, 0)))
+                plt.axis('off')
+                plt.show()
+
+
+
 #以下CNN実装
 
 #Transforms定義
 custom_transform = transforms.Compose([
-    transforms.Resize(224),
-    transforms.CenterCrop(224),
+    transforms.Resize(112),
+    transforms.CenterCrop(112),
     transforms.ToTensor(),
-    transforms.Normalize(0.5, 0.5)
+    #transforms.Normalize(0.5, 0.5)
 ])
 
 #データセット作成
@@ -265,15 +369,21 @@ class CustomDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
 
+        # 画像の幅と高さを取得（仮定：すべての画像が同じサイズ）
+        self.image_width = 224  # 画像の幅に適した値に置き換えてください．ここはTransformにかける前の画素数
+        self.image_height = 224  # 画像の高さに適した値に置き換えてください．ここはTransformにかける前の画素数
+
     def __len__(self):
         return len(self.csv_data)
 
     def __getitem__(self, idx):
         img_path = os.path.join(self.root_dir, self.csv_data.iloc[idx, 0])  # CSVの1列目から画像ファイルのパスを取得
-        print(img_path)
         image = Image.open(img_path)
 
-        label = torch.tensor([self.csv_data.iloc[idx, 1], self.csv_data.iloc[idx, 2]], dtype=torch.float32)  # x, y座標のラベル
+        # xとy座標を0から1の範囲に正規化
+        x = self.csv_data.iloc[idx, 1] / self.image_width
+        y = self.csv_data.iloc[idx, 2] / self.image_height
+        label = torch.tensor([x, y], dtype=torch.float32)  # 正規化したx, y座標のラベル
 
         if self.transform:
             image = self.transform(image)
@@ -290,7 +400,7 @@ traindataset = CustomDataset(csv_file=train_csv_file, root_dir=train_root_dir, t
 testdataset = CustomDataset(csv_file=test_csv_file, root_dir=test_root_dir, transform=custom_transform)
 
 # データローダーを作成し、バッチごとにデータを取得します
-batch_size = 5
+batch_size = 1
 train_dataloader = DataLoader(traindataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(testdataset, batch_size=batch_size, shuffle=True)
 
@@ -336,12 +446,12 @@ print(f'n_input: "一旦パス"  n_hidden: {n_hidden} n_output: {n_output}')
 class CNN(nn.Module):
   def __init__(self, n_output, n_hidden):
     super().__init__()
-    self.conv1 = nn.Conv2d(3, 224, 3)
-    self.conv2 = nn.Conv2d(224, 224, 3)
+    self.conv1 = nn.Conv2d(3, 112, 3)
+    self.conv2 = nn.Conv2d(112, 112, 3)
     self.relu = nn.ReLU(inplace=True)
     self.maxpool = nn.MaxPool2d((2,2))
     self.flatten = nn.Flatten()
-    self.l1 = nn.Linear(2710400, n_hidden)
+    self.l1 = nn.Linear(326592, n_hidden)
     self.l2 = nn.Linear(n_hidden, n_output)
 
     self.features = nn.Sequential(
@@ -379,7 +489,7 @@ optimizer = torch.optim.SGD(net.parameters(), lr=lr)
 print(net)
 
 # モデルのサマリー表示
-summary(net,(5,3,224,224),depth=1)
+summary(net,(5,3,112,112),depth=1)
 
 # 損失計算
 loss = eval_loss(train_dataloader, device, net, criterion)
@@ -412,8 +522,21 @@ num_epochs = 50
 # 評価結果記録用
 history2 = np.zeros((0,5))
 
+#誤差計算用の許容誤差範囲
+max_error=0.1
+
 # 学習
-history2 = fit(net, optimizer, criterion, num_epochs, train_dataloader, test_dataloader, device, history2)
+history2 = fit(net, optimizer, criterion, num_epochs, train_dataloader, test_dataloader, device, history2, max_error)
 
 #評価
 evaluate_history(history2)
+
+# トレーニングループの後に、テストデータセットでモデルを評価します
+テスト精度 = calculate_accuracy(test_dataloader, net, device)
+テスト損失 = calculate_loss(test_dataloader, net, criterion, device)
+
+print(f"テスト精度: {テスト精度:.2f}%")
+print(f"テスト損失: {テスト損失:.4f}")
+
+# 予測結果を表示する
+show_predicted_results(test_dataloader, net, device, max_error=0.1)
