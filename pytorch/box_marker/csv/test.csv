@@ -1,3 +1,4 @@
+Pass,X,Y
 /home/daiki/pytorch/box_marker/resize/test/box10.jpg,110,90
 /home/daiki/pytorch/box_marker/resize/test/box25.jpg,111,120
 /home/daiki/pytorch/box_marker/resize/test/box11.jpg,122,123
