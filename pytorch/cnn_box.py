@@ -163,7 +163,7 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
 
             # 予測座標を取得
             predicted_coords_val = outputs_test.detach().cpu().numpy()
-            true_coords_np_val = labels.cpu().numpy()
+            true_coords_np_val = labels_test.cpu().numpy()
             
             for i in range(len(true_coords_np_val)):
                
