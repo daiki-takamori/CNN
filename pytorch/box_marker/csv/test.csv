@@ -1,6 +1,11 @@
 Pass,X,Y
 /home/daiki/pytorch/box_marker/resize/test/box10.jpg,110,90
 /home/daiki/pytorch/box_marker/resize/test/box25.jpg,111,120
+/home/daiki/pytorch/box_marker/resize/test/IMG_9097.jpg,96,116
+/home/daiki/pytorch/box_marker/resize/test/IMG_9084.jpg,84,115
+/home/daiki/pytorch/box_marker/resize/test/IMG_9091.jpg,84,128
+/home/daiki/pytorch/box_marker/resize/test/IMG_9102.jpg,113,113
 /home/daiki/pytorch/box_marker/resize/test/box11.jpg,122,123
 /home/daiki/pytorch/box_marker/resize/test/box12.jpg,133,109
+/home/daiki/pytorch/box_marker/resize/test/IMG_9085.jpg,110,127
 /home/daiki/pytorch/box_marker/resize/test/box7.jpg,95,147
