@@ -62,13 +62,10 @@ def eval_loss(loader, device, net, criterion):
     return loss
 
 #正解データ数計算用
-def calculate_distance(coord1_1, coord2_2):
-  coord1=coord1_1[0]
-  coord2=coord2_2[0]
+def calculate_distance(coord1, coord2):
     # 2つの座標間のユークリッド距離を計算する関数
   return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
 
-# 学習用関数
 # 学習用関数
 def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device, history, max_error):
 
@@ -82,6 +79,7 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
 
     for epoch in range(base_epochs, num_epochs+base_epochs):
         # 1エポックあたりの正解数(精度計算用)
+        n_train_acc_pre, n_val_acc_pre = 0, 0
         n_train_acc, n_val_acc = 0, 0
         # 1エポックあたりの累積損失(平均化前)
         train_loss, val_loss = 0, 0
@@ -90,6 +88,7 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
 
         #訓練フェーズ
         net.train()
+        i=0
 
         for inputs, labels in tqdm(train_loader):
             # 1バッチあたりのデータ件数
@@ -123,20 +122,25 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
             predicted_coords = outputs.detach().cpu().numpy()
             true_coords_np = labels.cpu().numpy()
 
-            # ユークリッド距離を計算
-            error = calculate_distance(predicted_coords, true_coords_np)
-
+            for i in range(len(true_coords_np)):
+               
+                # ユークリッド距離を計算
+                error = calculate_distance(predicted_coords[i], true_coords_np[i])
+                if error <= max_error:
+                    n_train_acc_pre += 1  # 正解数をカウント
+                
             # 平均前の損失と正解数の計算
             # lossは平均計算が行われているので平均前の損失に戻して加算
             train_loss += loss.item() * train_batch_size
             
             # 距離がmax_error以下であれば正解とみなす
-            if error <= max_error:
-              n_train_acc += 1  # 正解数をカウント
+            n_train_acc=n_train_acc_pre  
+            
 
 
         #予測フェーズ
         net.eval()
+        i=0
 
         for inputs_test, labels_test in test_loader:
             # 1バッチあたりのデータ件数
@@ -160,19 +164,25 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
             # 予測座標を取得
             predicted_coords_val = outputs_test.detach().cpu().numpy()
             true_coords_np_val = labels.cpu().numpy()
-
-            # ユークリッド距離を計算
-            error_val = calculate_distance(predicted_coords, true_coords_np)
+            
+            for i in range(len(true_coords_np_val)):
+               
+                # ユークリッド距離を計算
+                error_val = calculate_distance(predicted_coords_val[i], true_coords_np_val[i])
+                if error_val <= max_error:
+                    n_val_acc_pre += 1  # 正解数をカウント
   
             #  平均前の損失と正解数の計算
             # lossは平均計算が行われているので平均前の損失に戻して加算
             val_loss +=  loss_test.item() * test_batch_size
 
             # 距離がmax_error以下であれば正解とみなす
-            if error <= max_error:
-              n_val_acc += 1  # 正解数をカウント
+            n_val_acc=n_val_acc_pre
+        
 
         # 精度計算
+        print(n_val_acc )
+        print(n_test)
         train_acc = n_train_acc / n_train
         val_acc = n_val_acc / n_test
         # 損失計算
@@ -280,7 +290,7 @@ def torch_seed(seed=123):
     torch.use_deterministic_algorithms = True
 
 #結果評価用(自作)
-def calculate_accuracy(loader, model, device, max_error=0.1):
+def calculate_accuracy(loader, model, device, max_error):
     model.eval()  # モデルを評価モードに設定
     正解数 = 0
     合計数 = 0
@@ -291,7 +301,7 @@ def calculate_accuracy(loader, model, device, max_error=0.1):
             labels = labels.to(device)
             outputs = model(images)
             predicted = outputs.cpu().numpy()  # 結果をCPUに移動し、NumPy配列に変換
-            正解数 += np.sum(np.abs(predicted - labels.cpu().numpy()) >= max_error)  # 誤差がmax_error以内の場合に正解とみなす
+            正解数 += np.sum(np.abs(predicted - labels.cpu().numpy()) <= max_error)  # 誤差がmax_error以内の場合に正解とみなす
             合計数 += labels.size(0)*2
 
     精度 = (正解数 / 合計数) * 100
@@ -319,7 +329,7 @@ def calculate_distance_orig(coord1, coord2):
     # 2つの座標間のユークリッド距離を計算する関数
     return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
 
-def show_predicted_results(loader, model, device, max_error=20):
+def show_predicted_results(loader, model, device, max_error):
     model.eval()  # モデルを評価モードに設定
 
     with torch.no_grad():  # 評価中に勾配計算を無効化
@@ -357,7 +367,7 @@ custom_transform = transforms.Compose([
     transforms.Resize(112),
     transforms.CenterCrop(112),
     transforms.ToTensor(),
-    #transforms.Normalize(0.5, 0.5)
+    #transforms.Normalize(0.5, 0.5)#-1~1に正規化する場合はこれ使う
 ])
 
 #データセット作成
@@ -400,7 +410,7 @@ traindataset = CustomDataset(csv_file=train_csv_file, root_dir=train_root_dir, t
 testdataset = CustomDataset(csv_file=test_csv_file, root_dir=test_root_dir, transform=custom_transform)
 
 # データローダーを作成し、バッチごとにデータを取得します
-batch_size = 1
+batch_size = 5
 train_dataloader = DataLoader(traindataset, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(testdataset, batch_size=batch_size, shuffle=True)
 
@@ -517,7 +527,7 @@ lr = 0.01
 optimizer = optim.SGD(net.parameters(), lr=lr)
 
 # 繰り返し回数
-num_epochs = 50
+num_epochs = 100
 
 # 評価結果記録用
 history2 = np.zeros((0,5))
@@ -531,12 +541,12 @@ history2 = fit(net, optimizer, criterion, num_epochs, train_dataloader, test_dat
 #評価
 evaluate_history(history2)
 
-# トレーニングループの後に、テストデータセットでモデルを評価します
-テスト精度 = calculate_accuracy(test_dataloader, net, device)
-テスト損失 = calculate_loss(test_dataloader, net, criterion, device)
+# トレーニングループの後に、テストデータセットでモデルを評価します#現状いらない
+#テスト精度 = calculate_accuracy(test_dataloader, net, device, max_error)
+#テスト損失 = calculate_loss(test_dataloader, net, criterion, device)
 
-print(f"テスト精度: {テスト精度:.2f}%")
-print(f"テスト損失: {テスト損失:.4f}")
+#print(f"テスト精度: {テスト精度:.2f}%")
+#print(f"テスト損失: {テスト損失:.4f}")
 
 # 予測結果を表示する
-show_predicted_results(test_dataloader, net, device, max_error=0.1)
+show_predicted_results(test_dataloader, net, device, max_error)
