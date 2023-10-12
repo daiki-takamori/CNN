@@ -181,8 +181,6 @@ def fit(net, optimizer, criterion, num_epochs, train_loader, test_loader, device
         
 
         # 精度計算
-        print(n_val_acc )
-        print(n_test)
         train_acc = n_train_acc / n_train
         val_acc = n_val_acc / n_test
         # 損失計算
