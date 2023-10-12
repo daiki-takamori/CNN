@@ -1,4 +1,4 @@
-Pass,X,Y
+Pass,x,y
 /home/daiki/pytorch/box_marker/resize/test/box10.jpg,110,90
 /home/daiki/pytorch/box_marker/resize/test/box25.jpg,111,120
 /home/daiki/pytorch/box_marker/resize/test/IMG_9097.jpg,96,116
@@ -9,3 +9,13 @@ Pass,X,Y
 /home/daiki/pytorch/box_marker/resize/test/box12.jpg,133,109
 /home/daiki/pytorch/box_marker/resize/test/IMG_9085.jpg,110,127
 /home/daiki/pytorch/box_marker/resize/test/box7.jpg,95,147
+/home/daiki/pytorch/box_marker/removemarker/test/IMG_9097_cleanup.jpg,96,116
+/home/daiki/pytorch/box_marker/removemarker/test/box25_cleanup.jpg,111,120
+/home/daiki/pytorch/box_marker/removemarker/test/box12_cleanup.jpg,133,109
+/home/daiki/pytorch/box_marker/removemarker/test/box10_cleanup.jpg,110,90
+/home/daiki/pytorch/box_marker/removemarker/test/IMG_9091_cleanup.jpg,84,128
+/home/daiki/pytorch/box_marker/removemarker/test/IMG_9085_cleanup.jpg,110,127
+/home/daiki/pytorch/box_marker/removemarker/test/box7_cleanup.jpg,95,147
+/home/daiki/pytorch/box_marker/removemarker/test/IMG_9102_cleanup.jpg,113,113
+/home/daiki/pytorch/box_marker/removemarker/test/IMG_9084_cleanup.jpg,84,115
+/home/daiki/pytorch/box_marker/removemarker/test/box11_cleanup.jpg,122,123
