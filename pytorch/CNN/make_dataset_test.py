@@ -24,7 +24,7 @@ def nonclear():
 
     # ディレクトリ内のすべての画像ファイルに対して処理を実行
     for filename in os.listdir(input_dir_nonclear):
-        if filename.endswith(".jpg"):  # または他のサポートされているファイル拡張子
+        if filename.endswith('.jpg') or filename.endswith('.png'):  # または他のサポートされているファイル拡張子
             # 画像を開く
             img = Image.open(os.path.join(input_dir_nonclear, filename))
 
@@ -113,7 +113,7 @@ def nonclear():
 
 def clear():
     # 画像ファイルの絶対パスを取得
-    image_paths = [os.path.abspath(os.path.join(input_dir_clear, filename)) for filename in os.listdir(input_dir_clear) if filename.endswith(".jpg")]
+    image_paths = [os.path.abspath(os.path.join(input_dir_clear, filename)) for filename in os.listdir(input_dir_clear) if filename.endswith('.jpg') or filename.endswith('.png')]
 
     # CSVファイルに絶対パスを書き込む
     with open(output_directory3 +'/test.csv', "a", newline="") as file:

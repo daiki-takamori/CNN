@@ -217,7 +217,9 @@ def evaluate_history(history):
   plt.ylabel('損失')
   plt.title('学習曲線(損失)')
   plt.legend()
+  plt.savefig(f"/home/daiki/pytorch/data/20231019_progress/損失.svg")
   plt.show()
+
 
   # 学習曲線の表示 (精度)
   plt.figure(figsize=(9,8))
@@ -228,6 +230,7 @@ def evaluate_history(history):
   plt.ylabel('精度')
   plt.title('学習曲線(精度)')
   plt.legend()
+  plt.savefig(f"/home/daiki/pytorch/data/20231019_progress/精度.svg")
   plt.show()
 
 
@@ -327,7 +330,7 @@ def calculate_distance_orig(coord1, coord2):
     # 2つの座標間のユークリッド距離を計算する関数
     return ((coord1[0] - coord2[0]) ** 2 + (coord1[1] - coord2[1]) ** 2) ** 0.5
 
-def show_predicted_results(loader, model, device, max_error):
+def show_predicted_results(loader, model, device, max_error,imgnum):
     model.eval()  # モデルを評価モードに設定
 
     with torch.no_grad():  # 評価中に勾配計算を無効化
@@ -351,10 +354,18 @@ def show_predicted_results(loader, model, device, max_error):
                 print(f"正解座標: {true_coords_np}, 予測座標: {predicted_coords}, 予測結果: {prediction_label}, 誤差: {error:.2f}")
 
                 # 画像を表示
-                plt.figure(figsize=(5, 5))
+                plt.figure(figsize=(8, 8))
+                plt.title(f"正解座標: {true_coords_np*112}, 予測座標: {predicted_coords*112}")#Transformerの画素数に応じて乗じる値は変更
                 plt.imshow(np.transpose(images[i].cpu().numpy(), (1, 2, 0)))
+                # 予測座標を白い☓印で表示
+                plt.scatter(predicted_coords[0]*112, predicted_coords[1]*112, s=300, c='blue', marker='o', label='Predicted')#Transformerの画素数に応じて乗じる値は変更
+                # 正解座標を青い☓印で表示
+                plt.scatter(true_coords_np[0]*112, true_coords_np[1]*112, s=300, c='green', marker='o', label='True')#Transformerの画素数に応じて乗じる値は変更
                 plt.axis('off')
+                 # 画像をSVGファイルとして保存
+                plt.savefig(f"/home/daiki/pytorch/data/20231019_progress/image_{imgnum}.svg")
                 plt.show()
+                imgnum+=1
 
 
 
@@ -525,7 +536,7 @@ lr = 0.01
 optimizer = optim.SGD(net.parameters(), lr=lr)
 
 # 繰り返し回数
-num_epochs = 150
+num_epochs = 50
 
 # 評価結果記録用
 history2 = np.zeros((0,5))
@@ -547,4 +558,5 @@ evaluate_history(history2)
 #print(f"テスト損失: {テスト損失:.4f}")
 
 # 予測結果を表示する
-show_predicted_results(test_dataloader, net, device, max_error)
+imgnum=1 #画像保存時に画像に名前をつける用
+show_predicted_results(test_dataloader, net, device, max_error,imgnum)

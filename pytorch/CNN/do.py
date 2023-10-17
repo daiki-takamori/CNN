@@ -1,10 +1,10 @@
 import make_dataset_train
 import make_dataset_test
 
-make_dataset_train.nonclear()
-make_dataset_train.clear()
-#make_dataset_test.nonclear()
-#make_dataset_test.clear()
+#make_dataset_train.nonclear()
+#make_dataset_train.clear()
+make_dataset_test.nonclear()
+make_dataset_test.clear()
 
 '''
 import csv
