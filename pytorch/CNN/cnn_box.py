@@ -372,6 +372,15 @@ def show_predicted_results(loader, model, device, max_error,imgnum):
 #以下CNN実装
 
 #Transforms定義
+costom_transform_train = transforms.Compose([
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.Resize(112),
+    transforms.CenterCrop(112),
+    transforms.ToTensor(),
+    #transforms.Normalize(0.5, 0.5),
+    transforms.RandomErasing(p=0.5, scale=(0.02, 0.33), ratio=(0.3, 3.3), value=0, inplace=False)
+])
+
 custom_transform = transforms.Compose([
     transforms.Resize(112),
     transforms.CenterCrop(112),
@@ -415,7 +424,7 @@ train_root_dir = '/home/daiki/pytorch/box_marker/resize/train'    # 画像ファ
 test_csv_file = '/home/daiki/pytorch/box_marker/csv/test.csv'  # CSVファイルのパス
 test_root_dir = '/home/daiki/pytorch/box_marker/resize/test'    # 画像ファイルのルートディレクトリ
 
-traindataset = CustomDataset(csv_file=train_csv_file, root_dir=train_root_dir, transform=custom_transform)
+traindataset = CustomDataset(csv_file=train_csv_file, root_dir=train_root_dir, transform=costom_transform_train)
 testdataset = CustomDataset(csv_file=test_csv_file, root_dir=test_root_dir, transform=custom_transform)
 
 # データローダーを作成し、バッチごとにデータを取得します
@@ -536,7 +545,7 @@ lr = 0.01
 optimizer = optim.SGD(net.parameters(), lr=lr)
 
 # 繰り返し回数
-num_epochs = 50
+num_epochs = 100
 
 # 評価結果記録用
 history2 = np.zeros((0,5))
